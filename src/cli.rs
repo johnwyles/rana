@@ -1,5 +1,4 @@
 use clap::Parser;
-use regex::Regex;
 
 #[derive(Parser)]
 #[command(
@@ -30,6 +29,7 @@ pub struct CLIArgs {
         help = "Enter the number of starting bits that should be 0."
     )]
     pub difficulty: u8,
+
     #[arg(
         short,
         long = "vanity",
@@ -38,27 +38,19 @@ pub struct CLIArgs {
         help = "Enter the prefix your public key should have when expressed
 as hexadecimal."
     )]
-    pub vanity_prefix: String,
+    pub vanity_hex: String,
+
     #[arg(
         short = 'n',
-        long = "vanity-n-prefix",
+        long = "vanity-n-regex",
         required = false,
         default_value = "",
-        help = "Enter the prefix your public key should have when expressed
-in npub format (Bech32 encoding). Specify multiple vanity
-targets as a comma-separated list."
+        help = "Enter the regular expression to find a public npub formatted
+        (Bech32  encoding) key. Specify multiple vanity targets as a comma-
+        separated list of regular expressions."
     )]
-    pub vanity_npub_prefixes_raw_input: String,
-    #[arg(
-        short = 's',
-        long = "vanity-n-suffix",
-        required = false,
-        default_value = "",
-        help = "Enter the suffix your public key should have when expressed
-in npub format (Bech32 encoding). Specify multiple vanity
-targets as a comma-separated list."
-    )]
-    pub vanity_npub_suffixes_raw_input: String,
+    pub vanity_npub_regexes_raw_input: String,
+
     #[arg(
         short = 'c',
         long = "cores",
@@ -115,9 +107,8 @@ targets as a comma-separated list."
 
 pub fn check_args(
     difficulty: u8,
-    vanity_prefix: &str,
-    vanity_npub_prefixes: &Vec<String>,
-    vanity_npub_suffixes: &Vec<String>,
+    vanity_hex: &str,
+    vanity_npub_regexes: &Vec<String>,
     num_cores: usize,
 ) {
     // Check the public key requirements
@@ -125,51 +116,15 @@ pub fn check_args(
     if difficulty > 0 {
         requirements_count += 1;
     }
-    if !vanity_prefix.is_empty() {
+    if !vanity_hex.is_empty() {
         requirements_count += 1;
     }
-    if !vanity_npub_prefixes.is_empty() || !vanity_npub_suffixes.is_empty() {
+    if !vanity_npub_regexes.is_empty() {
         requirements_count += 1;
     }
 
     if requirements_count > 1 {
         panic!("You can cannot specify more than one requirement. You should choose between difficulty or any of the vanity formats.");
-    }
-
-    if vanity_prefix.len() > 64 {
-        panic!("The vanity prefix cannot be longer than 64 characters.");
-    }
-
-    if !vanity_prefix.is_empty() {
-        // check valid hexa characters
-        let hex_re = Regex::new(r"^([0-9a-f]*)$").unwrap();
-        if !hex_re.is_match(vanity_prefix) {
-            panic!("The vanity prefix can only contain hexadecimal characters.");
-        }
-    }
-
-    for vanity_npub_prefix in vanity_npub_prefixes {
-        if !vanity_npub_prefix.is_empty() {
-            let hex_re = Regex::new(r"^([02-9ac-hj-np-z]*)$").unwrap();
-            if !hex_re.is_match(vanity_npub_prefix.as_str()) {
-                panic!("The vanity npub prefix can only contain characters supported by Bech32: 023456789acdefghjklmnpqrstuvwxyz");
-            }
-        }
-        if vanity_npub_prefix.len() > 59 {
-            panic!("The vanity npub prefix cannot be longer than 59 characters.");
-        }
-    }
-
-    for vanity_npub_suffix in vanity_npub_suffixes {
-        if !vanity_npub_suffix.is_empty() {
-            let hex_re = Regex::new(r"^([02-9ac-hj-np-z]*)$").unwrap();
-            if !hex_re.is_match(vanity_npub_suffix.as_str()) {
-                panic!("The vanity npub suffix can only contain characters supported by Bech32: 023456789acdefghjklmnpqrstuvwxyz");
-            }
-        }
-        if vanity_npub_suffix.len() > 59 {
-            panic!("The vanity npub suffix cannot be longer than 59 characters.");
-        }
     }
 
     if num_cores == 0 {
